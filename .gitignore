@@ -1,0 +1,19 @@
+# Node modules
+node_modules/
+backend/node_modules/
+
+# Environment variables
+.env
+backend/.env
+
+# Build outputs
+dist/
+backend/dist/
+
+# Prisma local database/client
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# OS generated files
+.DS_Store
+Thumbs.db
