@@ -121,7 +121,8 @@ const worker = new Worker('pr-security-scan', async (job) => {
         const githubResponse = await fetch(`https://api.github.com/repos/${owner}/${name}/pulls/${prNumber}`, {
             headers: {
                 'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
-                'Accept': 'application/vnd.github.v3.diff'
+                'Accept': 'application/vnd.github.v3.diff',
+                'User-Agent': 'ai-security-gatekeeper'
             }
         });
 
@@ -135,11 +136,11 @@ const worker = new Worker('pr-security-scan', async (job) => {
         console.log(`🤖 Analyzing code with Gemini...`)
 
         // Combine the system instructions and the diff into a single, bulletproof prompt
-        const promptText = `You are a strict, senior DevSecOps engineer. Review this pull request code diff from the repository ${owner}/${name}:
-            ${diffText}
-
-            Focus ONLY on security vulnerabilities (e.g., exposed API keys, SQL injection, XSS, insecure dependencies). Do NOT comment on code style, formatting, or performance. If the code is secure, respond ONLY with the word 'SECURE'. If you find vulnerabilities, provide a concise list of the exact flaws.`;
-
+        const promptText = `You are a helpful automated code review assistant. Review this pull request code diff from the repository ${owner}/${name}:
+    
+        ${diffText}
+    
+        Check for standard software engineering best practices. Ensure there are no hardcoded secrets, plain-text passwords, or obvious logical bugs. Do not comment on styling or formatting. If the code looks safe and standard, respond ONLY with the exact word 'SECURE'. If you find explicit hardcoded secrets or critical logic flaws, list them concisely.`;
 
         const aiReport = await analyzeWithGemini(promptText);
 
@@ -164,7 +165,8 @@ const worker = new Worker('pr-security-scan', async (job) => {
             headers: {
                 'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
                 'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'User-Agent': 'ai-security-gatekeeper' // Added header
             },
             body: JSON.stringify({ body: commentBody })
         });
@@ -173,7 +175,7 @@ const worker = new Worker('pr-security-scan', async (job) => {
             console.log(`✅ Successfully posted security report to GitHub!`);
         } else {
             const errorData = await commentResponse.text();
-            console.error(`⚠️ Failed to post GitHub comment: ${commentResponse.status} - ${errorData}`);
+            throw new Error(`⚠️ Failed to post GitHub comment: ${commentResponse.status} - ${errorData}`); // Now throws an error
         }
 
     } catch (error) {
