@@ -154,6 +154,28 @@ const worker = new Worker('pr-security-scan', async (job) => {
 
         console.log(`💾 Database status updated to: ${finalStatus}`);
         
+        console.log(`🚀 Posting report to GitHub PR #${prNumber}...`);
+
+        // Format the comment with a Markdown for a clean UI on Github
+        const commentBody = `### 🛡️ AI Security Gatekeeper Report\n\n${aiReport}\n\n*Status: ${finalStatus.toUpperCase()}*`;
+
+        const commentResponse = await fetch(`https://api.github.com/repos/${owner}/${name}/issues/${prNumber}/comments`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ body: commentBody })
+        });
+
+        if (commentResponse.ok) {
+            console.log(`✅ Successfully posted security report to GitHub!`);
+        } else {
+            const errorData = await commentResponse.text();
+            console.error(`⚠️ Failed to post GitHub comment: ${commentResponse.status} - ${errorData}`);
+        }
+
     } catch (error) {
         console.error(`❌ Job failed:`, error);
         // if the api call fails, update the databse so it isnt stuck "pending" forever 
