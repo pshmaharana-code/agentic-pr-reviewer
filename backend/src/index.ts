@@ -9,8 +9,23 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
 // Middleware: Allows JSON parsing and Cross-Origin requests
-app.use(cors());
+app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
+
+app.get('/api/prs', async(req,res) => {
+  try{
+    const prs = await prisma.pullRequest.findMany({
+      orderBy: { id: 'desc' },
+      include: { repository: true }
+    });
+    res.json(prs);
+  } catch (error) {
+    console.error('❌ Failed to fetch PRs:', error);
+    res.status(500).json({ error: 'Failed to fetch database records' });
+  }
+});
+
+
 
 // Health Check Endpoint (Our equivalent of a Flask route)
 app.get('/api/health', async (req, res) => {
