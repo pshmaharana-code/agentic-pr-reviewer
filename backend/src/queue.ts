@@ -135,6 +135,8 @@ const worker = new Worker('pr-security-scan', async (job) => {
 
         console.log(`🤖 Analyzing code with Gemini...`)
 
+
+
         // Combine the system instructions and the diff into a single, bulletproof prompt
         const promptText = `You are a helpful automated code review assistant. Review this pull request code diff from the repository ${owner}/${name}:
     
@@ -142,15 +144,28 @@ const worker = new Worker('pr-security-scan', async (job) => {
     
         Check for standard software engineering best practices. Ensure there are no hardcoded secrets, plain-text passwords, or obvious logical bugs. Do not comment on styling or formatting. If the code looks safe and standard, respond ONLY with the exact word 'SECURE'. If you find explicit hardcoded secrets or critical logic flaws, list them concisely.`;
 
-        const aiReport = await analyzeWithGemini(promptText);
+        // 1. Create a 30-second timeout timer
+        const timeoutPromise = new Promise<string>((_, reject) => {
+            setTimeout(() => reject(new Error('Gemini API connection timed out after 30 seconds')), 30000);
+        });
+
+        // 2. Race the Gemini API call against the timer
+        const aiReport = await Promise.race([
+            analyzeWithGemini(promptText),
+            timeoutPromise
+        ]);
 
         console.log(`\n📋 AI SECURITY REPORT:\n${aiReport}\n`);
 
         const finalStatus = aiReport.trim() === 'SECURE' ? 'passed' : 'failed';
 
+        // 3. Update the database ONCE with both the status and the report
         await prisma.pullRequest.update({
             where: { id: pullRequestId },
-            data: { status: finalStatus }
+            data: {
+                status: finalStatus,
+                report: finalStatus === 'passed' ? null : aiReport
+            }
         });
 
         console.log(`💾 Database status updated to: ${finalStatus}`);
@@ -180,10 +195,15 @@ const worker = new Worker('pr-security-scan', async (job) => {
 
     } catch (error) {
         console.error(`❌ Job failed:`, error);
+
+        const errorMessage = error instanceof Error ? error.message : 'An unknown system error occurred.';
         // if the api call fails, update the databse so it isnt stuck "pending" forever 
         await prisma.pullRequest.update({
             where: { id: pullRequestId },
-            data: { status: 'failed' }
+            data: { 
+                status: 'failed',
+                report: `🚨 System Analysis Failure:\n${errorMessage}`
+            }
         });
     } 
 }, {

@@ -21,6 +21,7 @@ model PullRequest {
   prNumber     Int
   title        String
   status       String     @default("pending")
+  report       String?
   repositoryId String
   repository   Repository @relation(fields: [repositoryId], references: [id]) // <-- Links the tables
   createdAt    DateTime   @default(now())
