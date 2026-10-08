@@ -1,21 +1,46 @@
+version: '3.8'
+
 services:
+  # 1. The Database Container
   postgres:
     image: postgres:15-alpine
-    container_name: gatekeeper_postgres
-    ports:
-      - "5433:5432"
     environment:
-      POSTGRES_USER: gatekeeper_user
-      POSTGRES_PASSWORD: gatekeeper_password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
       POSTGRES_DB: gatekeeper_db
+    ports:
+      - "5433:5432" # Maps your host machine port to the container's internal port
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data # Saves data so it survives restarts
 
+  # 2. The Message Queue Container
   redis:
-    image: redis:7-alpine
-    container_name: gatekeeper_redis
+    image: redis:alpine
     ports:
       - "6380:6379"
 
+  # 3. Your Express Backend Container
+  backend:
+    image: gatekeeper-backend
+    ports:
+      - "3000:3000"
+    environment:
+      # In Docker, containers talk using their service names, not "localhost"
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/gatekeeper_db?schema=public
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    depends_on:
+      - postgres
+      - redis
+
+  # 4. Your React + Nginx Frontend Container
+  frontend:
+    image: gatekeeper-frontend
+    ports:
+      - "5173:80" # Maps local port 5173 to Nginx's internal port 80
+    depends_on:
+      - backend
+
+# Define the persistent storage volume for PostgreSQL
 volumes:
   pgdata:

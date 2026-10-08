@@ -5,9 +5,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "generate": "fnm exec --using v22.23.2 node node_modules/prisma/build/index.js generate",
-    "dev": "fnm exec --using v22.23.2 node node_modules/tsx/dist/cli.mjs watch src/index.ts",
-    "studio": "fnm exec --using v22.23.2 node node_modules/prisma/build/index.js studio"
+    "generate": "npx prisma generate",
+    "dev": "npx tsx watch src/index.ts",
+    "studio": "npx prisma studio"
   },
   "keywords": [],
   "author": "",

@@ -89,8 +89,8 @@ async function analyzeWithGemini(promptText: string): Promise<string> {
 
 //Connect to your Docker Redis instance (The Pinboard)
 const redisConnection = new IORedis({
-    host: 'localhost',
-    port: 6380,
+    host: 'redis',
+    port: 6379,
     maxRetriesPerRequest: null,
 });
 
